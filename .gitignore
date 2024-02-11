@@ -8,6 +8,7 @@ __pycache__/
 
 # File name 
 creditcard.csv
+Loan_Default.csv
 
 # Distribution / packaging
 .Python
