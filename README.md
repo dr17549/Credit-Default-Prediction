@@ -1,4 +1,6 @@
 # Loan Default prediction 
-Algorithms to detect credit card fraud detection from kaggle dataset : https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud/data
+Data set from https://www.kaggle.com/datasets/yasserh/loan-default-dataset/data
+1. Dealing with an imbalanced dataset
+2. Dealing with a high dimension dataset
 
 [ In Progress ] 
