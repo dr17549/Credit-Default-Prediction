@@ -21,7 +21,7 @@ from sklearn import linear_model
 from imblearn.over_sampling import SMOTE
 
 from scipy.interpolate import griddata
-
+from sklearn.metrics import recall_score, precision_score, f1_score, mean_squared_error
 
 def create_dictionary(param_1, param_2):
     result_dictionary = {}
@@ -97,14 +97,18 @@ random_state = 809
 cv = KFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
 
 ############################### Cross Validation of Random Forest ###############################
-max_depth = [5, 10, 20]
-number_of_trees = [50, 100, 150]
+#max_depth = [10, 20, 30, 50]
+#number_of_trees = [100, 150, 300, 500]
 #max_depth = [1, 2, 3, 4, 5]
 #number_of_trees = [5, 10, 15, 20, 25, 30, 35, 40]
+
+max_depth = [300]
+number_of_trees = [1,10,20,30,40,50,60,70,80,90,100]
 
 cross_validate_result = create_dictionary(number_of_trees, max_depth)
 cross_validate_recall = create_dictionary(number_of_trees, max_depth)
 cross_validate_precision = create_dictionary(number_of_trees, max_depth)
+cross_validate_mse = create_dictionary(number_of_trees, max_depth)
 
 for tree in number_of_trees:
     for depth in max_depth:
@@ -112,6 +116,7 @@ for tree in number_of_trees:
         accuracies = []
         recall_scores = []
         precision_scores = []
+        mse_scores = []
         random_forest_cv = RandomForestClassifier(n_estimators=tree, max_depth=depth)
         for train_index, test_index in cv.split(X_smote):
             # change to loc to define the rows in the dataframe
@@ -125,20 +130,24 @@ for tree in number_of_trees:
             accuracies.append(score)
             recall_scores.append(recall_score(y_cv_test, y_pred))
             precision_scores.append(precision_score(y_cv_test, y_pred))
+            mse_scores.append(mean_squared_error(y_cv_test, y_pred))
 
         cross_validate_result[tree][depth] = (sum(accuracies) / len(accuracies))
         cross_validate_recall[tree][depth] = (sum(recall_scores) / len(recall_scores))
         cross_validate_precision[tree][depth] = (sum(precision_scores) / len(precision_scores))
+        cross_validate_mse[tree][depth] = (sum(mse_scores) / len(mse_scores))
 
         print("Accuracy : " + str((sum(accuracies) / len(accuracies))))
         print("Precision : " + str((sum(recall_scores) / len(recall_scores))))
         print("Recall : " + str((sum(precision_scores) / len(precision_scores))))
+        print("MSE : " + str((sum(mse_scores) / len(mse_scores))))
         print()
     # At the end you'll see what the value of each LASSO paramter is
 print('------------------')
 print('Accuracy : ', cross_validate_result)
 print('Precision : ', cross_validate_precision)
 print('Recall : ', cross_validate_recall)
+print('MSE : ', cross_validate_mse)
 
 ############################### Plotting ###############################
 
@@ -303,66 +312,122 @@ cbar_recall.set_label('Recall Value')
 
 plt.show()
 
-############################### 2D Diagram - Separate ###############################
+# ############################### 2D Diagram - Separate ###############################
+#
+# # Creating a DataFrame for easier manipulation
+# data = {
+#     'Number of Trees': np.tile(number_of_trees, len(max_depth)),
+#     'Max Depth': np.repeat(max_depth, len(number_of_trees)),
+#     'Accuracy': accuracies,
+#     'Recall': recalls,
+#     'Precision': precisions
+# }
+#
+# df_plot = pd.DataFrame(data)
+#
+# # Plotting
+# fig, ax = plt.subplots(1, 2, figsize=(16, 6))
+#
+# # Recall plot
+# for depth in max_depth:
+#     subset = df_plot[df_plot['Max Depth'] == depth]
+#     ax[0].plot(subset['Number of Trees'], subset['Recall'], '-o', label=f'Max Depth {depth}')
+#
+# ax[0].set_title('Recall vs. Number of Trees')
+# ax[0].set_xlabel('Number of Trees')
+# ax[0].set_ylabel('Recall')
+# ax[0].legend(title='Max Depth')
+# ax[0].grid(True)
+#
+# # Precision plot
+# for depth in max_depth:
+#     subset = df_plot[df_plot['Max Depth'] == depth]
+#     ax[1].plot(subset['Number of Trees'], subset['Precision'], '-o', label=f'Max Depth {depth}')
+#
+# ax[1].set_title('Precision vs. Number of Trees')
+# ax[1].set_xlabel('Number of Trees')
+# ax[1].set_ylabel('Precision')
+# ax[1].legend(title='Max Depth')
+# ax[1].grid(True)
+#
+# plt.tight_layout()
+# plt.show()
+#
+# ############################### 2D Diagram - Combination ###############################
+#
+# plt.figure(figsize=(12, 7))
+#
+# # Define marker styles to differentiate between Recall and Precision
+# marker_styles = ['o', 's']
+#
+# # Plotting Recall and Precision for each Max Depth with automatic color assignment
+# for i, depth in enumerate(max_depth):
+#     subset = df_plot[df_plot['Max Depth'] == depth]
+#     # Recall
+#     plt.plot(subset['Number of Trees'], subset['Recall'], marker=marker_styles[0], linestyle='-', label=f'Recall - Depth {depth}')
+#     # Precision
+#     plt.plot(subset['Number of Trees'], subset['Precision'], marker=marker_styles[1], linestyle='--', label=f'Precision - Depth {depth}')
+#
+# plt.title('Recall and Precision vs. Number of Trees for Different Depths')
+# plt.xlabel('Number of Trees')
+# plt.ylabel('Metric Value')
+# plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), title='Metric - Max Depth')
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()
 
-# Creating a DataFrame for easier manipulation
-data = {
-    'Number of Trees': np.tile(number_of_trees, len(max_depth)),
-    'Max Depth': np.repeat(max_depth, len(number_of_trees)),
-    'Accuracy': accuracies,
-    'Recall': recalls,
-    'Precision': precisions
-}
-
-df_plot = pd.DataFrame(data)
+################################ 2D Diagram - Separate ###############################
 
 # Plotting
-fig, ax = plt.subplots(1, 2, figsize=(16, 6))
+fig, axs = plt.subplots(3, 1, figsize=(8, 15))
 
-# Recall plot
-for depth in max_depth:
-    subset = df_plot[df_plot['Max Depth'] == depth]
-    ax[0].plot(subset['Number of Trees'], subset['Recall'], '-o', label=f'Max Depth {depth}')
+# Recall
+for tree in number_of_trees:
+    recalls = [cross_validate_recall[tree][depth] for depth in max_depth]
+    axs[0].plot(max_depth, recalls, label=f'{tree} Trees')
+axs[0].set_title('Recall vs Max Depth')
+axs[0].set_xlabel('Max Depth')
+axs[0].set_ylabel('Recall')
+axs[0].legend()
 
-ax[0].set_title('Recall vs. Number of Trees')
-ax[0].set_xlabel('Number of Trees')
-ax[0].set_ylabel('Recall')
-ax[0].legend(title='Max Depth')
-ax[0].grid(True)
+# Precision
+for tree in number_of_trees:
+    precisions = [cross_validate_precision[tree][depth] for depth in max_depth]
+    axs[1].plot(max_depth, precisions, label=f'{tree} Trees')
+axs[1].set_title('Precision vs Max Depth')
+axs[1].set_xlabel('Max Depth')
+axs[1].set_ylabel('Precision')
+axs[1].legend()
 
-# Precision plot
-for depth in max_depth:
-    subset = df_plot[df_plot['Max Depth'] == depth]
-    ax[1].plot(subset['Number of Trees'], subset['Precision'], '-o', label=f'Max Depth {depth}')
-
-ax[1].set_title('Precision vs. Number of Trees')
-ax[1].set_xlabel('Number of Trees')
-ax[1].set_ylabel('Precision')
-ax[1].legend(title='Max Depth')
-ax[1].grid(True)
+# MSE
+for tree in number_of_trees:
+    mses = [cross_validate_mse[tree][depth] for depth in max_depth]
+    axs[2].plot(max_depth, mses, label=f'{tree} Trees')
+axs[2].set_title('MSE vs Max Depth')
+axs[2].set_xlabel('Max Depth')
+axs[2].set_ylabel('MSE')
+axs[2].legend()
 
 plt.tight_layout()
 plt.show()
 
-############################### 2D Diagram - Combination ###############################
+################################ 2D Diagram - Combine ###############################
 
-plt.figure(figsize=(12, 7))
+fig, ax = plt.subplots(figsize=(10, 6))
 
-# Define marker styles to differentiate between Recall and Precision
-marker_styles = ['o', 's']
+colors = ['blue', 'green', 'red']
+metrics = ['Recall', 'Precision', 'MSE']
+metric_dicts = [cross_validate_recall, cross_validate_precision, cross_validate_mse]
 
-# Plotting Recall and Precision for each Max Depth with automatic color assignment
-for i, depth in enumerate(max_depth):
-    subset = df_plot[df_plot['Max Depth'] == depth]
-    # Recall
-    plt.plot(subset['Number of Trees'], subset['Recall'], marker=marker_styles[0], linestyle='-', label=f'Recall - Depth {depth}')
-    # Precision
-    plt.plot(subset['Number of Trees'], subset['Precision'], marker=marker_styles[1], linestyle='--', label=f'Precision - Depth {depth}')
+for i, metric_dict in enumerate(metric_dicts):
+    for tree in number_of_trees:
+        values = [metric_dict[tree][depth] for depth in max_depth]
+        ax.plot(max_depth, values, label=f'{tree} Trees - {metrics[i]}', color=colors[i],
+                linestyle='--' if tree == 5 else '-')
 
-plt.title('Recall and Precision vs. Number of Trees for Different Depths')
-plt.xlabel('Number of Trees')
-plt.ylabel('Metric Value')
-plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), title='Metric - Max Depth')
-plt.grid(True)
-plt.tight_layout()
+ax.set_title('Recall, Precision, and MSE vs Max Depth')
+ax.set_xlabel('Max Depth')
+ax.set_ylabel('Metric Values')
+ax.legend()
+
 plt.show()
