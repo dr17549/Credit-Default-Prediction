@@ -22,4 +22,3 @@ We try and predict loan default using Machine Learning techniques. The steps we 
 11. XGBoost with adjusting threshold 
 
 In these models, we also cross validated the hyperparameters (such as lambda in LASSO and number of trees in Random Forest). 
-
