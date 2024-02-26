@@ -1,3 +1,6 @@
+# import libraries
+
+# handle dataset
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,12 +11,14 @@ from sklearn.model_selection import KFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import recall_score, precision_score, f1_score
 from sklearn.ensemble import RandomForestClassifier
-
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
+
+import pprint
 from tabulate import tabulate
 
 from sklearn import linear_model
@@ -23,14 +28,14 @@ from imblearn.over_sampling import SMOTE
 from scipy.interpolate import griddata
 from sklearn.metrics import recall_score, precision_score, f1_score, mean_squared_error
 
-def create_dictionary(param_1, param_2):
+
+def create_dictionary(param_1,param_2):
     result_dictionary = {}
     for i in param_1:
         result_dictionary[i] = {}
         for j in param_2:
-            result_dictionary[i][j] = {}
+                result_dictionary[i][j] = {}
     return result_dictionary
-
 
 ############################### Read Dataset ###############################
 
@@ -40,49 +45,40 @@ df = pd.read_csv('Loan_Default.csv')
 # Interest_rate_spread and rate_of_interest are dropped due to the fact that their values are NA where the loan has defaulted
 # open credit , secured by, total units : only has one value or too few observations
 df = df.drop(['year', 'ID', 'loan_type', 'loan_purpose', 'Interest_rate_spread',
-              'rate_of_interest', 'open_credit', 'Upfront_charges', 'construction_type',
-              'Secured_by', 'Security_Type', 'total_units'], axis=1)
+              'rate_of_interest', 'open_credit','Upfront_charges','construction_type',
+              'Secured_by', 'Security_Type','total_units'], axis=1)
+# print(df['Status'].value_counts())
+# print(df.isna().sum())
 
 # Assumption 2 : We focus on mortgage loans
 df = df.dropna(subset=["property_value"])
-
 # Assumption 3 : drop approv in adv that is NA (only small set of samples)
 df = df.dropna(subset=["term"])
 df = df.dropna(subset=["loan_limit"])
 df = df.dropna(subset=["approv_in_adv"])
 df = df.dropna(subset=["Neg_ammortization"])
 df = df.dropna(subset=["income"])
-
 # Drop rows where sex is not available
 df = df.drop(df[df['Gender'] == 'Not Available'].index)
 
+
 categorical_columns = ['loan_limit', 'Gender', 'approv_in_adv', 'Credit_Worthiness',
-                       'business_or_commercial', 'Neg_ammortization',
-                       'interest_only', 'lump_sum_payment', 'occupancy_type',
-                       'credit_type', 'co-applicant_credit_type',
-                       'age', 'submission_of_application', 'Region']
+       'business_or_commercial', 'Neg_ammortization',
+       'interest_only', 'lump_sum_payment', 'occupancy_type',
+        'credit_type', 'co-applicant_credit_type',
+       'age', 'submission_of_application', 'Region']
 
 for i in categorical_columns:
-    df = pd.concat([df, pd.get_dummies(df[i], drop_first=True, prefix=i)], axis=1)
-    df = df.drop(i, axis=1)
+    df = pd.concat([df,pd.get_dummies(df[i],drop_first=True, prefix=i)],axis=1)
+    df = df.drop(i,axis=1)
 
 ############################### Train & Test Split ###############################
 
-# define X and y variables as dataframe
 y = df['Status']
-X = df.drop('Status', axis=1)
+X = df.drop('Status',axis=1)
 X_train, X_OOS_test, y_train, y_OOS_test = train_test_split(X, y, test_size=0.20, random_state=66)
 
-############################### Normalization ###############################
-
-# Normalised the values
-scaler = StandardScaler()
-# Fit and apply normalization on the training set
-X_train = scaler.fit_transform(X_train)
-# Apply the same normalization rules on the test set
-X_OOS_test = scaler.transform(X_OOS_test)
-
-############################### Over-Sampling ###############################
+############################### Oversampling ###############################
 
 # Over sample using SMOTE
 # -- by inspecting the data, we see that the minority class is extremely class (fraud "Class" == 1)
@@ -95,20 +91,49 @@ n_splits = 5
 shuffle = True
 random_state = 809
 cv = KFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
+# plot = plot_cv_indices(cv, X_smote, y_smote, n_splits)
 
-############################### Cross Validation of Random Forest ###############################
+############################### LASSO and Random Forest ###############################
+
+lasso = linear_model.Lasso(alpha=0.01)
+lasso.fit(X_smote, y_smote)
+y_pred = lasso.predict(X_OOS_test)
+# turn the continous value into classification via simple >= 0.5 is 1
+y_pred_classification = [1 if x >= 0.5 else 0 for x in y_pred]
+print("LASSO score : " , )
+print("LASSO Model Recall : " , recall_score(y_OOS_test, y_pred_classification))
+print("LASSO Model Precision : ", precision_score(y_OOS_test,y_pred_classification))
+print("--")
+
+# See LASSO coefficient that is 0
+lasso_coefficients = pd.Series(lasso.coef_)
+non_zero_lasso_coefficients = lasso_coefficients[lasso_coefficients != 0]
+# Print the non-zero coefficients
+print("Non-zero Lasso Coefficients:")
+print(non_zero_lasso_coefficients)
+
+X_lasso_rf_train = X_smote[['loan_amount','property_value','income']]
+X_lasso_rf_test = X_OOS_test[['loan_amount','property_value','income']]
+random_forest = RandomForestClassifier(n_estimators = 100, max_depth=5, random_state=0)
+random_forest.fit(X_lasso_rf_train, y_smote)
+y_pred = random_forest.predict(X_lasso_rf_test)
+print("RND Forest Model Recall : " , recall_score(y_OOS_test, y_pred))
+print("RND Forest Precision : ", precision_score(y_OOS_test, y_pred))
+
+############################### Cross Validation for LASSO and randomforest ###############################
+
+# CV in Trees
+# Set Hyperparameter (Lambda) values to cross validate here !!!!!
 #max_depth = [10, 20, 30, 50]
 #number_of_trees = [100, 150, 300, 500]
-#max_depth = [1, 2, 3, 4, 5]
-#number_of_trees = [5, 10, 15, 20, 25, 30, 35, 40]
-
-max_depth = [30]
+max_depth = [20]
 number_of_trees = [1,10,20,30,40,50,60,70,80,90,100]
 
 cross_validate_result = create_dictionary(number_of_trees, max_depth)
 cross_validate_recall = create_dictionary(number_of_trees, max_depth)
 cross_validate_precision = create_dictionary(number_of_trees, max_depth)
 cross_validate_mse = create_dictionary(number_of_trees, max_depth)
+
 
 for tree in number_of_trees:
     for depth in max_depth:
@@ -120,8 +145,8 @@ for tree in number_of_trees:
         random_forest_cv = RandomForestClassifier(n_estimators=tree, max_depth=depth)
         for train_index, test_index in cv.split(X_smote):
             # change to loc to define the rows in the dataframe
-            X_cv_train, X_cv_test, y_cv_train, y_cv_test = X_smote[train_index], X_smote[test_index], y_smote[
-                train_index], y_smote[test_index]
+            X_cv_train, X_cv_test, y_cv_train, y_cv_test = X_lasso_rf_train.iloc[train_index], X_lasso_rf_train.iloc[
+                test_index], y_smote.iloc[train_index], y_smote.iloc[test_index]
             random_forest_cv.fit(X_cv_train, y_cv_train)
             y_pred = random_forest_cv.predict(X_cv_test)
 
@@ -148,6 +173,7 @@ print('Accuracy : ', cross_validate_result)
 print('Precision : ', cross_validate_precision)
 print('Recall : ', cross_validate_recall)
 print('MSE : ', cross_validate_mse)
+
 
 ############################### Plotting ###############################
 
