@@ -21,7 +21,8 @@ We try and predict loan default using Machine Learning techniques. The steps we 
 5. Check for Correlation between independent variables 
 2. Split Test Train dataset
 3. SMOTE to oversample the data
-4. Train Models and Cross Validate for hyperparameter tuning 
+4. 5-Fold Cross Validate for hyperparameter tuning
+5. Out-of-Sample model performance measurement 
 
 ## Models 
 1. OLS , LASSO and Ridge for Regularization
