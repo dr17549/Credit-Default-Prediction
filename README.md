@@ -3,10 +3,12 @@ Data set from https://www.kaggle.com/datasets/yasserh/loan-default-dataset/data
 
 ## Why is credit default prediction important?
 
+Credit default prediction is a big part of lending and risk control. Financial instituions are very concerned with assesing risk of an invidual or company before issuing a loan. This is because non-performing loans are a huge financial distress for the company and collecting debts on these loans is a a burden in operational cost. 
 
-This dataset is Loan Default. The aim is to tune a model to predict whether a loan will default or not. The challenge with this problem
-is that the dataset is highly imbalanced. The traditional method will not work very well and we cannot rely on accuracy as the only metric. In addition, since False Negative (those that are actually defaulters who were predicted as not default) is more important than those who are False Positive (those who are non-default who were predicted as defaulters). 
+## Why is it hard? 
+The challenge with this problem is that in general, the number of defaulters are generally very smalll compared to the number of non-defaulters. The dataset is heavily imbalanced. 
 
+In addition, because we are more concerned with correctly predicting those who are defaulters right, accuracy may not be the right metric to evalute the models. Since False Negative (those that are actually defaulters who were predicted as not default) is more important than those who are False Positive (those who are non-default who were predicted as defaulters), we rely on recall as the chosen performance measurement. 
 
 ## Process Overview 
 We try and predict loan default using Machine Learning techniques. The steps we took were : 
